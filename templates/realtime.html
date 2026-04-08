@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Monitoring - ParkVision AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: #15151f;
+            --accent-primary: #00d4aa;
+            --accent-secondary: #00a8ff;
+            --accent-warning: #ffaa00;
+            --accent-danger: #ff4466;
+            --accent-success: #00d4aa;
+            --slot-empty: #00d4aa;
+            --slot-occupied: #ff4466;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --border-color: #2a2a3a;
+            --gradient-primary: linear-gradient(135deg, #00d4aa 0%, #00a8ff 100%);
+            --gradient-card: linear-gradient(145deg, #1a1a25 0%, #12121a 100%);
+            --shadow-glow: 0 0 40px rgba(0, 212, 170, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0, 168, 255, 0.08) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(10, 10, 15, 0.9);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .logo-text {
+            font-size: 22px;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: rgba(0, 212, 170, 0.1);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.loading {
+            background: var(--accent-warning);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.active {
+            background: var(--accent-success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        main {
+            padding: 32px 0;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-title span {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Parking Map Styles - Clean & User Friendly */
+        .parking-map-container {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            min-height: 400px;
+        }
+
+        .parking-map-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 350px;
+            color: var(--text-muted);
+        }
+
+        .parking-map-placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .parking-map {
+            display: none;
+        }
+
+        .parking-map.visible {
+            display: block;
+        }
+
+        .parking-lot {
+            background: #1e1e28;
+            border-radius: var(--radius-lg);
+            padding: 25px;
+            border: 1px solid var(--border-color);
+        }
+
+        .parking-lot-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .parking-lot-title {
+            font-size: 18px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .parking-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 10px 50px;
+            position: relative;
+        }
+
+        .parking-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .row-label {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            width: 30px;
+            text-align: center;
+        }
+
+        .parking-slot {
+            width: 50px;
+            height: 65px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            cursor: default;
+            border: 2px solid;
+        }
+
+        .parking-slot.empty {
+            background: #22c55e;
+            border-color: #16a34a;
+        }
+
+        .parking-slot.occupied {
+            background: #ef4444;
+            border-color: #dc2626;
+        }
+
+        .parking-slot .slot-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .parking-slot:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .legend-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+
+        .legend-box.empty {
+            background: #22c55e;
+        }
+
+        .legend-box.occupied {
+            background: #ef4444;
+        }
+
+        .legend-text {
+            font-weight: 500;
+        }
+
+        .legend-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .live-badge {
+            padding: 6px 12px;
+            background: rgba(255, 68, 102, 0.9);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            animation: pulse 2s infinite;
+            display: none;
+        }
+
+        .live-badge.visible {
+            display: block;
+        }
+
+        .progress-bar {
+            margin-top: 16px;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 4px;
+        }
+
+        .stat-value.primary { color: var(--accent-primary); }
+        .stat-value.secondary { color: var(--accent-secondary); }
+        .stat-value.warning { color: var(--accent-warning); }
+        .stat-value.danger { color: var(--accent-danger); }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .occupancy-bar {
+            margin-top: 24px;
+        }
+
+        .occupancy-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .occupancy-track {
+            height: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .occupancy-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .occupancy-fill.high {
+            background: linear-gradient(135deg, var(--accent-warning) 0%, var(--accent-danger) 100%);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            color: var(--accent-primary);
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .video-info {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .video-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 4px 0;
+        }
+
+        .video-info-label {
+            color: var(--text-muted);
+        }
+
+        .video-info-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--accent-primary);
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 212, 170, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #ff2244;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        .log-container {
+            margin-top: 24px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 12px;
+        }
+
+        .log-entry {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 3px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            margin-right: 8px;
+        }
+
+        .log-message {
+            color: var(--text-secondary);
+        }
+
+        .log-message.success {
+            color: var(--accent-success);
+        }
+
+        .log-message.error {
+            color: var(--accent-danger);
+        }
+
+        .update-time {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 12px;
+        }
+
+        footer {
+            padding: 24px 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 48px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <div class="logo-icon">P</div>
+                    <div class="logo-text">ParkVision AI</div>
+                </a>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Image Detection</a>
+                    <a href="/realtime" class="nav-link active">Real-Time Monitor</a>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Ready</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1 class="page-title">Real-Time <span>Parking Monitor</span></h1>
+            <p class="page-subtitle">Live parking availability visualization from CCTV footage</p>
+
+            <div class="main-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span>Parking Lot Map</span>
+                        </div>
+                        <div class="live-badge" id="liveBadge">LIVE</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="parking-map-container">
+                            <div class="parking-map-placeholder" id="mapPlaceholder">
+                                <div class="parking-map-placeholder-icon">🅿️</div>
+                                <div>Upload a video and click Start to see live parking status</div>
+                            </div>
+                            
+                            <div class="parking-map" id="parkingMap">
+                                <div class="parking-lot" id="parkingLot">
+                                    <div class="parking-lot-header">
+                                        <div class="parking-lot-title">Parking Availability</div>
+                                    </div>
+                                    <div id="parkingRows"></div>
+                                </div>
+                                
+                                <div class="legend">
+                                    <div class="legend-item">
+                                        <div class="legend-box empty"></div>
+                                        <span class="legend-text">Available</span>
+                                        <span class="legend-count" id="legendEmpty">0</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-box occupied"></div>
+                                        <span class="legend-text">Occupied</span>
+                                        <span class="legend-count" id="legendOccupied">0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="update-time" id="updateTime">Last updated: --:--:--</div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Live Statistics</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-value primary" id="statTotal">0</div>
+                                    <div class="stat-label">Total Slots</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value secondary" id="statEmpty">0</div>
+                                    <div class="stat-label">Available</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value warning" id="statOccupied">0</div>
+                                    <div class="stat-label">Occupied</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="statCars">0</div>
+                                    <div class="stat-label">Cars Detected</div>
+                                </div>
+                            </div>
+
+                            <div class="occupancy-bar">
+                                <div class="occupancy-header">
+                                    <span class="settings-label">Occupancy Rate</span>
+                                    <span class="slider-value" id="occupancyValue">0%</span>
+                                </div>
+                                <div class="occupancy-track">
+                                    <div class="occupancy-fill" id="occupancyFill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <div class="card-title">Controls</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="upload-zone" id="uploadZone">
+                                <div class="upload-icon">&#8593;</div>
+                                <div class="upload-text">Drop video file or click to browse</div>
+                                <input type="file" class="file-input" id="fileInput" accept="video/*">
+                            </div>
+
+                            <div class="video-info" id="videoInfo" style="display: none;">
+                                <div class="video-info-row">
+                                    <span class="video-info-label">File</span>
+                                    <span class="video-info-value" id="infoFilename">-</span>
+                                </div>
+                                <div class="video-info-row">
+                                    <span class="video-info-label">Duration</span>
+                                    <span class="video-info-value" id="infoDuration">-</span>
+                                </div>
+                                <div class="video-info-row">
+                                    <span class="video-info-label">Resolution</span>
+                                    <span class="video-info-value" id="infoResolution">-</span>
+                                </div>
+                            </div>
+
+                            <div class="settings-group">
+                                <label class="settings-label">Detection Interval (seconds)</label>
+                                <div class="slider-container">
+                                    <input type="range" id="intervalSlider" min="1" max="10" step="0.5" value="3">
+                                    <span class="slider-value" id="intervalValue">3.0s</span>
+                                </div>
+                            </div>
+
+                            <div class="btn-group">
+                                <button class="btn btn-primary" id="btnStart" disabled>Start Monitoring</button>
+                                <button class="btn btn-danger" id="btnStop" disabled>Stop</button>
+                            </div>
+
+                            <div class="log-container" id="logContainer">
+                                <div class="log-entry">
+                                    <span class="log-time">--:--:--</span>
+                                    <span class="log-message">System ready. Upload a video to begin.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>ParkVision AI - Real-Time Parking Detection System</p>
+        </div>
+    </footer>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const videoInfo = document.getElementById('videoInfo');
+        const mapPlaceholder = document.getElementById('mapPlaceholder');
+        const parkingMap = document.getElementById('parkingMap');
+        const parkingRows = document.getElementById('parkingRows');
+        const liveBadge = document.getElementById('liveBadge');
+        const progressFill = document.getElementById('progressFill');
+        const updateTime = document.getElementById('updateTime');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const intervalSlider = document.getElementById('intervalSlider');
+        const intervalValue = document.getElementById('intervalValue');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const logContainer = document.getElementById('logContainer');
+
+        const statTotal = document.getElementById('statTotal');
+        const statEmpty = document.getElementById('statEmpty');
+        const statOccupied = document.getElementById('statOccupied');
+        const statCars = document.getElementById('statCars');
+        const occupancyValue = document.getElementById('occupancyValue');
+        const occupancyFill = document.getElementById('occupancyFill');
+
+        let currentVideoPath = null;
+        let eventSource = null;
+        let isRunning = false;
+
+        function addLog(message, type = '') {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-message ${type}">${message}</span>`;
+            logContainer.insertBefore(entry, logContainer.firstChild);
+            if (logContainer.children.length > 30) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function updateStatus(status, text) {
+            statusDot.className = 'status-dot ' + status;
+            statusText.textContent = text;
+        }
+
+        function renderParkingMap(slots, numRows) {
+            if (!slots || slots.length === 0) {
+                return;
+            }
+
+            // Group slots by row
+            const rowsData = {};
+            let totalEmpty = 0;
+            let totalOccupied = 0;
+            
+            slots.forEach(slot => {
+                if (!rowsData[slot.row]) {
+                    rowsData[slot.row] = [];
+                }
+                rowsData[slot.row].push(slot);
+                
+                if (slot.is_occupied) {
+                    totalOccupied++;
+                } else {
+                    totalEmpty++;
+                }
+            });
+
+            // Sort slots within each row by y position (top to bottom)
+            Object.keys(rowsData).forEach(row => {
+                rowsData[row].sort((a, b) => a.center_y - b.center_y);
+            });
+
+            // Build HTML - simple and clean
+            let html = '';
+            const rowKeys = Object.keys(rowsData).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            rowKeys.forEach((rowKey, rowIndex) => {
+                const rowSlots = rowsData[rowKey];
+                const rowLetter = String.fromCharCode(65 + rowIndex);
+                
+                html += `<div class="parking-row">`;
+                html += `<div class="row-label">${rowLetter}</div>`;
+                
+                rowSlots.forEach((slot, slotIndex) => {
+                    const statusClass = slot.is_occupied ? 'occupied' : 'empty';
+                    const slotNum = slotIndex + 1;
+                    const statusText = slot.is_occupied ? 'Occupied' : 'Available';
+                    
+                    html += `
+                        <div class="parking-slot ${statusClass}" title="${statusText}">
+                            <div class="slot-number">${rowLetter}${slotNum}</div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+
+            parkingRows.innerHTML = html;
+            
+            // Update legend counts
+            document.getElementById('legendEmpty').textContent = totalEmpty;
+            document.getElementById('legendOccupied').textContent = totalOccupied;
+        }
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleVideoUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleVideoUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleVideoUpload(file) {
+            if (!file.type.startsWith('video/')) {
+                addLog('Please select a video file', 'error');
+                return;
+            }
+
+            addLog(`Uploading ${file.name}...`);
+            updateStatus('loading', 'Uploading...');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/realtime/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentVideoPath = data.path;
+                    
+                    document.getElementById('infoFilename').textContent = data.filename;
+                    document.getElementById('infoDuration').textContent = data.duration + 's';
+                    document.getElementById('infoResolution').textContent = data.resolution;
+                    
+                    videoInfo.style.display = 'block';
+                    btnStart.disabled = false;
+                    
+                    addLog(`Video uploaded: ${data.filename}`, 'success');
+                    updateStatus('', 'Ready');
+                } else {
+                    addLog(`Upload failed: ${data.error}`, 'error');
+                    updateStatus('error', 'Upload Failed');
+                }
+            } catch (error) {
+                addLog(`Upload error: ${error.message}`, 'error');
+                updateStatus('error', 'Error');
+            }
+        }
+
+        intervalSlider.addEventListener('input', () => {
+            intervalValue.textContent = intervalSlider.value + 's';
+        });
+
+        btnStart.addEventListener('click', startProcessing);
+        btnStop.addEventListener('click', stopProcessing);
+
+        async function startProcessing() {
+            if (!currentVideoPath) {
+                addLog('No video selected', 'error');
+                return;
+            }
+
+            addLog('Starting real-time monitoring...');
+            updateStatus('loading', 'Starting...');
+            btnStart.disabled = true;
+
+            try {
+                const response = await fetch('/api/realtime/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        video_path: currentVideoPath,
+                        frame_interval: parseFloat(intervalSlider.value)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    isRunning = true;
+                    btnStop.disabled = false;
+                    liveBadge.classList.add('visible');
+                    mapPlaceholder.style.display = 'none';
+                    parkingMap.classList.add('visible');
+                    
+                    addLog('Monitoring started', 'success');
+                    updateStatus('active', 'Monitoring');
+                    
+                    startEventStream();
+                } else {
+                    addLog(`Start failed: ${data.error}`, 'error');
+                    updateStatus('error', 'Start Failed');
+                    btnStart.disabled = false;
+                }
+            } catch (error) {
+                addLog(`Start error: ${error.message}`, 'error');
+                updateStatus('error', 'Error');
+                btnStart.disabled = false;
+            }
+        }
+
+        async function stopProcessing() {
+            addLog('Stopping monitoring...');
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+
+            try {
+                await fetch('/api/realtime/stop', { method: 'POST' });
+            } catch (error) {
+                console.error('Stop error:', error);
+            }
+
+            isRunning = false;
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+            liveBadge.classList.remove('visible');
+            
+            addLog('Monitoring stopped', 'success');
+            updateStatus('', 'Stopped');
+        }
+
+        function startEventStream() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource('/api/realtime/stream');
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.stopped) {
+                        stopProcessing();
+                        return;
+                    }
+
+                    updateDisplay(data);
+                } catch (error) {
+                    console.error('Parse error:', error);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('EventSource error:', error);
+                if (isRunning) {
+                    addLog('Connection lost, reconnecting...', 'error');
+                    setTimeout(startEventStream, 2000);
+                }
+            };
+        }
+
+        function updateDisplay(data) {
+            // Update progress
+            if (data.progress !== undefined) {
+                progressFill.style.width = data.progress + '%';
+            }
+
+            // Update statistics
+            if (data.total_slots !== undefined) {
+                statTotal.textContent = data.total_slots;
+                statEmpty.textContent = data.empty_slots;
+                statOccupied.textContent = data.occupied_slots;
+                statCars.textContent = data.num_cars;
+                
+                const rate = data.occupancy_rate || 0;
+                occupancyValue.textContent = rate + '%';
+                occupancyFill.style.width = rate + '%';
+                
+                if (rate > 80) {
+                    occupancyFill.classList.add('high');
+                } else {
+                    occupancyFill.classList.remove('high');
+                }
+            }
+
+            // Update parking map
+            if (data.slots && data.slots.length > 0) {
+                renderParkingMap(data.slots, data.num_rows);
+            }
+
+            // Update timestamp
+            if (data.timestamp) {
+                const time = new Date(data.timestamp).toLocaleTimeString();
+                updateTime.textContent = `Last updated: ${time}`;
+            }
+
+            // Log processing time
+            if (data.processing_time) {
+                addLog(`Frame processed in ${data.processing_time}s - ${data.empty_slots} slots available`);
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (data.models_loaded) {
+                    addLog('Detection models ready', 'success');
+                } else {
+                    addLog('Loading detection models...');
+                    await fetch('/api/load-models', { method: 'POST' });
+                    addLog('Models loaded', 'success');
+                }
+            } catch (error) {
+                addLog('Error checking status', 'error');
+            }
+        }
+
+        checkStatus();
+    </script>
+</body>
+</html>
