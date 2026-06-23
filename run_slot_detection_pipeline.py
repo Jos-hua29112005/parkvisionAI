@@ -378,7 +378,7 @@ class SlotDetectionPipeline:
         logger.info(f"✓ Transformed {len(warped_car_polygons)} polygons to top-down view")
         return warped_car_polygons
     
-    def find_empty_slots(self, top_down_view, warped_car_polygons, debug_dir=None):
+    def find_empty_slots(self, top_down_view, warped_car_polygons, debug_dir=None, valid_column_centers=None):
         """
         Step 5: Find parking slots (both occupied and empty).
         
@@ -395,7 +395,7 @@ class SlotDetectionPipeline:
         logger.info("="*60)
         
         # Returns ALL slots (both occupied and empty) with is_occupied flag
-        slots = self.slot_finder.find_slots(top_down_view, warped_car_polygons, debug_dir=debug_dir)
+        slots = self.slot_finder.find_slots(top_down_view, warped_car_polygons, debug_dir=debug_dir, valid_column_centers=valid_column_centers)
         
         # Count occupied vs empty
         occupied_count = sum(1 for s in slots if s['is_occupied'])
@@ -472,7 +472,8 @@ class SlotDetectionPipeline:
         return vis_image
     
     def run_complete_pipeline(self, image_path, epsilon_factor=0.02, 
-                             visualize_steps=False, output_dir='pipeline_outputs'):
+                              visualize_steps=False, output_dir='pipeline_outputs',
+                              valid_column_centers=None):
         """
         Run the complete slot detection pipeline.
         
@@ -530,7 +531,7 @@ class SlotDetectionPipeline:
                 )
                 
                 # Step 5: Find all slots (both occupied and empty) - outputs saved to image_output_dir
-                slots = self.find_empty_slots(top_down_view, warped_car_polygons, debug_dir=image_output_dir)
+                slots = self.find_empty_slots(top_down_view, warped_car_polygons, debug_dir=image_output_dir, valid_column_centers=valid_column_centers)
                 
                 # Step 6: Visualize results with slot-based rendering
                 vis_output_path = os.path.join(image_output_dir, "slot_detection.png")
@@ -571,7 +572,7 @@ class SlotDetectionPipeline:
                 logger.info(f"✓ Using {len(warped_car_polygons)} car polygons in original coordinates")
                 
                 # Step 4: Find all slots on original image
-                slots = self.find_empty_slots(original_image, warped_car_polygons, debug_dir=image_output_dir)
+                slots = self.find_empty_slots(original_image, warped_car_polygons, debug_dir=image_output_dir, valid_column_centers=valid_column_centers)
                 
                 # Step 5: Visualize results on original image
                 vis_output_path = os.path.join(image_output_dir, "slot_detection.png")

@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Monitoring - ParkVision AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-primary: #0a0a0f;
@@ -55,7 +58,7 @@
             height: 100%;
             pointer-events: none;
             z-index: 0;
-            background: 
+            background:
                 radial-gradient(ellipse at 20% 20%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 80%, rgba(0, 168, 255, 0.08) 0%, transparent 50%);
         }
@@ -167,8 +170,17 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(0.9); }
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.6;
+                transform: scale(0.9);
+            }
         }
 
         main {
@@ -268,6 +280,26 @@
             border-radius: var(--radius-lg);
             padding: 25px;
             border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        /* Custom scrollbar for parking lot overflow */
+        .parking-lot::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .parking-lot::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+        }
+
+        .parking-lot::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .parking-lot::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
         }
 
         .parking-lot-header {
@@ -433,10 +465,21 @@
             margin-bottom: 4px;
         }
 
-        .stat-value.primary { color: var(--accent-primary); }
-        .stat-value.secondary { color: var(--accent-secondary); }
-        .stat-value.warning { color: var(--accent-warning); }
-        .stat-value.danger { color: var(--accent-danger); }
+        .stat-value.primary {
+            color: var(--accent-primary);
+        }
+
+        .stat-value.secondary {
+            color: var(--accent-secondary);
+        }
+
+        .stat-value.warning {
+            color: var(--accent-warning);
+        }
+
+        .stat-value.danger {
+            color: var(--accent-danger);
+        }
 
         .stat-label {
             font-size: 12px;
@@ -670,8 +713,62 @@
             font-size: 13px;
             margin-top: 48px;
         }
+
+        /* Live Streaming Feed styles - Stacked top/bottom */
+        .detection-frame-container {
+            background: #1e1e28;
+            border-radius: var(--radius-lg);
+            padding: 25px;
+            border: 1px solid var(--border-color);
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .frame-feed-wrapper {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f0f15;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            position: relative;
+            min-height: 450px;
+        }
+
+        .frame-feed-wrapper img {
+            width: 100%;
+            max-height: 600px;
+            object-fit: contain;
+            display: none;
+        }
+
+        .frame-feed-wrapper img.visible {
+            display: block;
+        }
+
+        .feed-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .feed-placeholder.hidden {
+            display: none;
+        }
     </style>
 </head>
+
 <body>
     <div class="bg-pattern"></div>
 
@@ -713,15 +810,29 @@
                                 <div class="parking-map-placeholder-icon">🅿️</div>
                                 <div>Upload a video and click Start to see live parking status</div>
                             </div>
-                            
+
                             <div class="parking-map" id="parkingMap">
+                                <!-- Top: Red/Green Representation -->
                                 <div class="parking-lot" id="parkingLot">
                                     <div class="parking-lot-header">
                                         <div class="parking-lot-title">Parking Availability</div>
                                     </div>
                                     <div id="parkingRows"></div>
                                 </div>
-                                
+
+                                <!-- Bottom: Live AI Detection Feed -->
+                                <div class="detection-frame-container">
+                                    <div class="parking-lot-header">
+                                        <div class="parking-lot-title">Live Detection Feed</div>
+                                    </div>
+                                    <div class="frame-feed-wrapper">
+                                        <img id="detectionFrame" src="" alt="Detection Feed">
+                                        <div class="feed-placeholder" id="feedPlaceholder">
+                                            <span>Waiting for frame...</span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="legend">
                                     <div class="legend-item">
                                         <div class="legend-box empty"></div>
@@ -734,11 +845,11 @@
                                         <span class="legend-count" id="legendOccupied">0</span>
                                     </div>
                                 </div>
-                                
+
                                 <div class="update-time" id="updateTime">Last updated: --:--:--</div>
                             </div>
                         </div>
-                        
+
                         <div class="progress-bar">
                             <div class="progress-fill" id="progressFill" style="width: 0%"></div>
                         </div>
@@ -894,13 +1005,13 @@
             const rowsData = {};
             let totalEmpty = 0;
             let totalOccupied = 0;
-            
+
             slots.forEach(slot => {
                 if (!rowsData[slot.row]) {
                     rowsData[slot.row] = [];
                 }
                 rowsData[slot.row].push(slot);
-                
+
                 if (slot.is_occupied) {
                     totalOccupied++;
                 } else {
@@ -908,46 +1019,46 @@
                 }
             });
 
-            // Sort slots within each row by y position (top to bottom)
+            // Sort slots within each row - reversed to mirror horizontally
             Object.keys(rowsData).forEach(row => {
-                rowsData[row].sort((a, b) => a.center_y - b.center_y);
+                rowsData[row].sort((a, b) => b.center_y - a.center_y);
             });
 
             // Build HTML - simple and clean
             let html = '';
             const rowKeys = Object.keys(rowsData).sort((a, b) => parseInt(a) - parseInt(b));
-            
+
             rowKeys.forEach((rowKey, rowIndex) => {
                 const rowSlots = rowsData[rowKey];
                 const rowLetter = String.fromCharCode(65 + rowIndex);
-                
+
                 html += `<div class="parking-row">`;
                 html += `<div class="row-label">${rowLetter}</div>`;
-                
+
                 rowSlots.forEach((slot, slotIndex) => {
                     const statusClass = slot.is_occupied ? 'occupied' : 'empty';
                     const slotNum = slotIndex + 1;
                     const statusText = slot.is_occupied ? 'Occupied' : 'Available';
-                    
+
                     html += `
                         <div class="parking-slot ${statusClass}" title="${statusText}">
                             <div class="slot-number">${rowLetter}${slotNum}</div>
                         </div>
                     `;
                 });
-                
+
                 html += `</div>`;
             });
 
             parkingRows.innerHTML = html;
-            
+
             // Update legend counts
             document.getElementById('legendEmpty').textContent = totalEmpty;
             document.getElementById('legendOccupied').textContent = totalOccupied;
         }
 
         uploadZone.addEventListener('click', () => fileInput.click());
-        
+
         uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadZone.classList.add('drag-over');
@@ -993,14 +1104,14 @@
 
                 if (data.success) {
                     currentVideoPath = data.path;
-                    
+
                     document.getElementById('infoFilename').textContent = data.filename;
                     document.getElementById('infoDuration').textContent = data.duration + 's';
                     document.getElementById('infoResolution').textContent = data.resolution;
-                    
+
                     videoInfo.style.display = 'block';
                     btnStart.disabled = false;
-                    
+
                     addLog(`Video uploaded: ${data.filename}`, 'success');
                     updateStatus('', 'Ready');
                 } else {
@@ -1048,10 +1159,10 @@
                     liveBadge.classList.add('visible');
                     mapPlaceholder.style.display = 'none';
                     parkingMap.classList.add('visible');
-                    
+
                     addLog('Monitoring started', 'success');
                     updateStatus('active', 'Monitoring');
-                    
+
                     startEventStream();
                 } else {
                     addLog(`Start failed: ${data.error}`, 'error');
@@ -1067,7 +1178,7 @@
 
         async function stopProcessing() {
             addLog('Stopping monitoring...');
-            
+
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
@@ -1083,9 +1194,18 @@
             btnStart.disabled = false;
             btnStop.disabled = true;
             liveBadge.classList.remove('visible');
-            
+
             addLog('Monitoring stopped', 'success');
             updateStatus('', 'Stopped');
+
+            // Clear detection frame
+            const detectionFrame = document.getElementById('detectionFrame');
+            const feedPlaceholder = document.getElementById('feedPlaceholder');
+            if (detectionFrame && feedPlaceholder) {
+                detectionFrame.src = '';
+                detectionFrame.classList.remove('visible');
+                feedPlaceholder.classList.remove('hidden');
+            }
         }
 
         function startEventStream() {
@@ -1098,7 +1218,7 @@
             eventSource.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    
+
                     if (data.stopped) {
                         stopProcessing();
                         return;
@@ -1131,11 +1251,11 @@
                 statEmpty.textContent = data.empty_slots;
                 statOccupied.textContent = data.occupied_slots;
                 statCars.textContent = data.num_cars;
-                
+
                 const rate = data.occupancy_rate || 0;
                 occupancyValue.textContent = rate + '%';
                 occupancyFill.style.width = rate + '%';
-                
+
                 if (rate > 80) {
                     occupancyFill.classList.add('high');
                 } else {
@@ -1146,6 +1266,21 @@
             // Update parking map
             if (data.slots && data.slots.length > 0) {
                 renderParkingMap(data.slots, data.num_rows);
+            }
+
+            // Update detection frame
+            const detectionFrame = document.getElementById('detectionFrame');
+            const feedPlaceholder = document.getElementById('feedPlaceholder');
+            if (detectionFrame && feedPlaceholder) {
+                if (data.frame_image) {
+                    detectionFrame.src = data.frame_image;
+                    detectionFrame.classList.add('visible');
+                    feedPlaceholder.classList.add('hidden');
+                } else {
+                    detectionFrame.src = '';
+                    detectionFrame.classList.remove('visible');
+                    feedPlaceholder.classList.remove('hidden');
+                }
             }
 
             // Update timestamp
@@ -1164,7 +1299,7 @@
             try {
                 const response = await fetch('/api/status');
                 const data = await response.json();
-                
+
                 if (data.models_loaded) {
                     addLog('Detection models ready', 'success');
                 } else {
@@ -1180,4 +1315,5 @@
         checkStatus();
     </script>
 </body>
+
 </html>

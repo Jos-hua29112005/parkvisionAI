@@ -159,7 +159,7 @@ class DynamicSlotFinder:
         
         return slots
 
-    def find_slots(self, image, car_polygons, debug_dir=None):
+    def find_slots(self, image, car_polygons, debug_dir=None, valid_column_centers=None):
         """
         UNIFORM SLOT FINDING ALGORITHM
         Uses configured slot dimensions or calculates dynamically from detected cars.
@@ -217,6 +217,25 @@ class DynamicSlotFinder:
         # STEP 2: CLUSTER CARS INTO COLUMNS
         # ============================================================
         rows = self._cluster_rows_by_x(car_polygons)
+        
+        # If valid column centers are provided, filter out clusters that are not near them
+        if valid_column_centers is not None and len(valid_column_centers) > 0:
+            filtered_rows = []
+            for row in rows:
+                row_cars = row["cars"]
+                if len(row_cars) == 0:
+                    continue
+                # Calculate average X of this column
+                avg_x = np.mean([p.centroid.x for p in row_cars])
+                
+                # Check if this avg_x is close to any of the valid column centers (within 100px)
+                is_valid = any(abs(avg_x - vc) < 100 for vc in valid_column_centers)
+                
+                if is_valid:
+                    filtered_rows.append(row)
+                else:
+                    logger.info(f"Filtered out transient column at X={avg_x:.1f} (not near valid column centers: {valid_column_centers})")
+            rows = filtered_rows
         
         all_slots = []
         rows_info = []

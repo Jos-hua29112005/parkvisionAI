@@ -90,6 +90,7 @@ class VideoProcessor:
         self.total_frames = 0
         self.fps = 30
         self.lock = threading.Lock()
+        self.column_centers = []
         
     def start(self):
         """Start video processing in background thread"""
@@ -168,7 +169,8 @@ class VideoProcessor:
                     image_path=temp_path,
                     epsilon_factor=0.02,
                     visualize_steps=False,
-                    output_dir=temp_output
+                    output_dir=temp_output,
+                    valid_column_centers=self.column_centers
                 )
                 
                 processing_time = time.time() - start_time
@@ -218,6 +220,17 @@ class VideoProcessor:
                     if current_column:
                         columns.append(current_column)
                     
+                    # Initialize baseline column centers from the first stable frame with exactly 3 columns
+                    if not self.column_centers and len(columns) == 3:
+                        centers = []
+                        for col in columns:
+                            if len(col) > 0:
+                                avg_x = np.mean([item['center_x'] for item in col])
+                                centers.append(avg_x)
+                        if len(centers) == 3:
+                            self.column_centers = sorted(centers)
+                            print(f"Initialized baseline column centers: {self.column_centers}")
+                    
                     # Now sort each column by y-coordinate (top to bottom)
                     slot_idx = 0
                     for col_idx, column in enumerate(columns):
@@ -237,6 +250,23 @@ class VideoProcessor:
                 # Count rows (columns in the parking lot)
                 num_rows = len(columns) if all_slots else 0
                 
+                # Encode visualization image (already BGR format)
+                vis_image = results.get('visualization')
+                frame_image = None
+                if vis_image is not None:
+                    # Rotate 90 degrees clockwise to match horizontal layout of red/green representation
+                    vis_image_rotated = cv2.rotate(vis_image, cv2.ROTATE_90_CLOCKWISE)
+                    _, buffer = cv2.imencode('.jpg', vis_image_rotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                    frame_base64 = base64.b64encode(buffer).decode('utf-8')
+                    frame_image = f'data:image/jpeg;base64,{frame_base64}'
+                
+                # Clean up temporary output directory
+                if os.path.exists(temp_output):
+                    try:
+                        shutil.rmtree(temp_output)
+                    except:
+                        pass
+                
                 return {
                     'success': True,
                     'frame_number': self.frame_count,
@@ -250,6 +280,7 @@ class VideoProcessor:
                     'processing_time': round(processing_time, 2),
                     'slots': slots_data,
                     'num_rows': num_rows,
+                    'frame_image': frame_image,
                     'timestamp': datetime.now().isoformat()
                 }
                 
@@ -262,6 +293,22 @@ class VideoProcessor:
                 )
                 
                 processing_time = time.time() - start_time
+                
+                # Encode visualization image (comes as RGB from process_image, convert to BGR first)
+                frame_image = None
+                if vis_image is not None:
+                    vis_image_bgr = cv2.cvtColor(vis_image, cv2.COLOR_RGB2BGR)
+                    # Rotate 90 degrees clockwise to match horizontal layout of red/green representation
+                    vis_image_rotated = cv2.rotate(vis_image_bgr, cv2.ROTATE_90_CLOCKWISE)
+                    _, buffer = cv2.imencode('.jpg', vis_image_rotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                    frame_base64 = base64.b64encode(buffer).decode('utf-8')
+                    frame_image = f'data:image/jpeg;base64,{frame_base64}'
+                
+                if os.path.exists(output_path):
+                    try:
+                        os.remove(output_path)
+                    except:
+                        pass
                 
                 return {
                     'success': True,
@@ -276,6 +323,7 @@ class VideoProcessor:
                     'processing_time': round(processing_time, 2),
                     'slots': [],
                     'num_rows': 0,
+                    'frame_image': frame_image,
                     'timestamp': datetime.now().isoformat()
                 }
                 
@@ -284,7 +332,9 @@ class VideoProcessor:
             import traceback
             traceback.print_exc()
             
-            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            # Rotate fallback frame 90 degrees clockwise
+            frame_rotated = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            _, buffer = cv2.imencode('.jpg', frame_rotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
             frame_base64 = base64.b64encode(buffer).decode('utf-8')
             
             return {
