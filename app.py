@@ -27,6 +27,7 @@ import threading
 import base64
 import cv2
 import numpy as np
+from urllib.parse import quote, unquote, urlparse, urlunparse
 from pathlib import Path
 from datetime import datetime
 from queue import Queue
@@ -75,11 +76,30 @@ def allowed_video(filename):
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_VIDEO_EXTENSIONS']
 
 
+def normalize_stream_url(source_url):
+    """Encode stream credentials so special characters do not break the URL."""
+    parsed_url = urlparse(source_url)
+    if '@' not in parsed_url.netloc:
+        return source_url
+
+    credentials, host = parsed_url.netloc.rsplit('@', 1)
+    if ':' not in credentials:
+        return source_url
+
+    username, password = credentials.split(':', 1)
+    encoded_credentials = '{}:{}'.format(
+        quote(unquote(username), safe=''),
+        quote(unquote(password), safe='')
+    )
+    return urlunparse(parsed_url._replace(netloc=f'{encoded_credentials}@{host}'))
+
+
 class VideoProcessor:
-    """Process video frames for real-time parking detection simulation"""
+    """Process local video files or network camera streams."""
     
     def __init__(self, video_path, frame_interval=2.0):
         self.video_path = video_path
+        self.is_stream = isinstance(video_path, str) and video_path.startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
         self.frame_interval = frame_interval
         self.cap = None
         self.running = False
@@ -91,14 +111,19 @@ class VideoProcessor:
         self.fps = 30
         self.lock = threading.Lock()
         self.column_centers = []
+
+    def _open_capture(self):
+        """Open the source and return whether it is readable."""
+        backend = cv2.CAP_FFMPEG if self.is_stream else cv2.CAP_ANY
+        self.cap = cv2.VideoCapture(self.video_path, backend)
+        return self.cap.isOpened()
         
     def start(self):
         """Start video processing in background thread"""
         if self.running:
             return
             
-        self.cap = cv2.VideoCapture(self.video_path)
-        if not self.cap.isOpened():
+        if not self._open_capture():
             raise ValueError(f"Cannot open video: {self.video_path}")
             
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -125,9 +150,15 @@ class VideoProcessor:
             
         frames_to_skip = int(self.fps * self.frame_interval)
         
-        while self.running and self.cap.isOpened():
+        while self.running:
             ret, frame = self.cap.read()
             if not ret:
+                if self.is_stream:
+                    self.cap.release()
+                    time.sleep(1.0)
+                    if self.running:
+                        self._open_capture()
+                    continue
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 continue
                 
@@ -673,7 +704,14 @@ def api_realtime_start():
     
     data = request.get_json() or {}
     video_path = data.get('video_path')
+    source_url = (data.get('source_url') or '').strip()
     frame_interval = float(data.get('frame_interval', 2.0))
+
+    if source_url:
+        parsed_url = urlparse(source_url)
+        if parsed_url.scheme not in {'rtsp', 'rtmp', 'http', 'https'} or not parsed_url.netloc:
+            return jsonify({'error': 'Unsupported live source. Use a complete RTSP, RTMP, HTTP, or HTTPS URL'}), 400
+        video_path = normalize_stream_url(source_url)
     
     if not video_path:
         video_files = os.listdir(app.config['VIDEO_FOLDER'])
@@ -682,7 +720,7 @@ def api_realtime_start():
         else:
             return jsonify({'error': 'No video file specified or found'}), 400
             
-    if not os.path.exists(video_path):
+    if not video_path.startswith(('rtsp://', 'rtmp://', 'http://', 'https://')) and not os.path.exists(video_path):
         return jsonify({'error': f'Video file not found: {video_path}'}), 404
         
     if video_processor and video_processor.running:
@@ -702,6 +740,7 @@ def api_realtime_start():
             'success': True,
             'message': 'Real-time processing started',
             'video_path': video_path,
+            'source_type': 'live' if video_path.startswith(('rtsp://', 'rtmp://', 'http://', 'https://')) else 'file',
             'frame_interval': frame_interval
         })
     except Exception as e:

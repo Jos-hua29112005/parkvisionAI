@@ -546,6 +546,44 @@
             display: none;
         }
 
+        .source-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 18px 0;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .source-divider::before,
+        .source-divider::after {
+            content: '';
+            height: 1px;
+            flex: 1;
+            background: var(--border-color);
+        }
+
+        .source-url {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font: 13px 'JetBrains Mono', monospace;
+            outline: none;
+        }
+
+        .source-url:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .source-url::placeholder {
+            color: var(--text-muted);
+        }
+
         .video-info {
             background: var(--bg-tertiary);
             border-radius: var(--radius-md);
@@ -904,6 +942,10 @@
                                 <input type="file" class="file-input" id="fileInput" accept="video/*">
                             </div>
 
+                            <div class="source-divider">or connect to a live source</div>
+                            <input class="source-url" id="sourceUrl" type="url"
+                                placeholder="rtsp://camera.example/live" autocomplete="off">
+
                             <div class="video-info" id="videoInfo" style="display: none;">
                                 <div class="video-info-row">
                                     <span class="video-info-label">File</span>
@@ -935,7 +977,7 @@
                             <div class="log-container" id="logContainer">
                                 <div class="log-entry">
                                     <span class="log-time">--:--:--</span>
-                                    <span class="log-message">System ready. Upload a video to begin.</span>
+                                    <span class="log-message">System ready. Upload a video or enter a live source URL.</span>
                                 </div>
                             </div>
                         </div>
@@ -968,6 +1010,7 @@
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const logContainer = document.getElementById('logContainer');
+        const sourceUrl = document.getElementById('sourceUrl');
 
         const statTotal = document.getElementById('statTotal');
         const statEmpty = document.getElementById('statEmpty');
@@ -1082,6 +1125,12 @@
             }
         });
 
+        sourceUrl.addEventListener('input', () => {
+            if (!isRunning) {
+                btnStart.disabled = sourceUrl.value.trim() === '' && !currentVideoPath;
+            }
+        });
+
         async function handleVideoUpload(file) {
             if (!file.type.startsWith('video/')) {
                 addLog('Please select a video file', 'error');
@@ -1132,8 +1181,9 @@
         btnStop.addEventListener('click', stopProcessing);
 
         async function startProcessing() {
-            if (!currentVideoPath) {
-                addLog('No video selected', 'error');
+            const liveUrl = sourceUrl.value.trim();
+            if (!currentVideoPath && !liveUrl) {
+                addLog('Upload a video or enter a live source URL', 'error');
                 return;
             }
 
@@ -1147,6 +1197,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         video_path: currentVideoPath,
+                        source_url: liveUrl,
                         frame_interval: parseFloat(intervalSlider.value)
                     })
                 });
